@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guía Médica Digital</title>
+  
+  <!-- Configuración PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0077b6">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Guía Médica">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3063/3063176.png">
+
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <style>
+    :root {
+      --primary: #0077b6;
+      --primary-dark: #023e8a;
+      --secondary: #00b4d8;
+      --bg: #f4f7f9;
+      --card-bg: #ffffff;
+      --text: #212529;
+      --text-muted: #6c757d;
+      --border: #e2e8f0;
+      --success: #25d366;
+      --cashea-yellow: #ffeb00;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 12px; padding-bottom: 80px; }
+
+    header {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white; padding: 16px; border-radius: 12px; margin-bottom: 16px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center;
+    }
+
+    .search-box {
+      margin-bottom: 16px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .search-box input, .search-box select {
+      flex: 1; min-width: 140px; padding: 10px 14px; border: 1px solid #cbd5e1;
+      border-radius: 8px; font-size: 14px; outline: none; background: white;
+    }
+
+    .btn {
+      padding: 9px 14px; border: none; border-radius: 8px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; text-decoration: none; font-size: 13px; transition: 0.2s ease;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #64748b; color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-call { background: #0d6efd; color: white; }
+    .btn-maps { background: #ea4335; color: white; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; }
+
+    .actions-bar {
+      display: flex; gap: 8px; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+    }
+
+    .cards-container { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+    .card {
+      background: var(--card-bg); border-radius: 14px; padding: 16px;
+      border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+      display: flex; flex-direction: column; justify-content: space-between;
+      position: relative; overflow: hidden;
+    }
+
+    .card-top-section {
+      display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px;
+    }
+
+    .doc-avatar {
+      width: 65px; height: 65px; border-radius: 50%; object-fit: cover;
+      border: 3px solid var(--secondary); flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .card-header-info { flex: 1; min-width: 0; }
+    .card-title { font-size: 16px; color: var(--primary-dark); font-weight: 700; margin-bottom: 2px; }
+    .card-subtitle { font-size: 12px; color: var(--secondary); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+    
+    .promo-carousel {
+      width: 90px; height: 90px; border-radius: 10px; overflow: hidden;
+      position: relative; flex-shrink: 0; border: 1px solid #cbd5e1;
+      background: #000; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .promo-carousel img {
+      width: 100%; height: 100%; object-fit: cover; display: block;
+    }
+    .carousel-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,0.5); color: white; border: none;
+      padding: 4px 6px; cursor: pointer; font-size: 10px; border-radius: 4px; z-index: 2;
+    }
+    .carousel-btn.prev { left: 2px; }
+    .carousel-btn.next { right: 2px; }
+
+    .badge-container { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+    .badge { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; }
+    .badge-insurance { background: #e3f2fd; color: #0d47a1; }
+    
+    .badge-cashea {
+      background: var(--cashea-yellow); color: #000000; font-weight: 800;
+      border: 1px solid #eab308; padding: 3px 8px; border-radius: 6px;
+    }
+    .cashea-svg-icon {
+      width: 14px; height: 14px; display: inline-block; vertical-align: middle;
+    }
+
+    .card-info { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; line-height: 1.5; }
+    .card-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+
+    #pwa-install-banner {
+      display: none; position: fixed; bottom: 12px; left: 12px; right: 12px;
+      background: #023e8a; color: white; padding: 12px 16px; border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 9999;
+      align-items: center; justify-content: space-between; gap: 10px;
+    }
+    #pwa-install-banner button {
+      background: var(--cashea-yellow); color: black; border: none; font-weight: bold;
+      padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 12px;
+    }
+
+    .modal {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; padding: 12px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: white; border-radius: 12px; width: 100%; max-width: 500px;
+      max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+
+    .rating-stars { color: #f59e0b; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .comments-list, .history-list { font-size: 12px; max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
+    .comment-item, .history-item { background: #f1f3f5; padding: 8px; border-radius: 6px; margin-bottom: 6px; }
+
+    #qrcode-container { display: flex; justify-content: center; margin: 16px 0; }
+  </style>
+</head>
+<body>
+
+  <div id="pwa-install-banner">
+    <div style="font-size: 13px;">
+      <strong>📲 Instalar Aplicación</strong><br>
+      Añade la app a tu pantalla de inicio
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button id="pwa-install-btn">INSTALAR</button>
+      <button onclick="document.getElementById('pwa-install-banner').style.display='none'" style="background:transparent; color:white;">✕</button>
+    </div>
+  </div>
+
+  <header>
+    <h2>Guía Médica Digital</h2>
+    <p style="font-size: 12px; opacity: 0.9;">Directorio de Especialistas y Centros de Salud</p>
+  </header>
+
+  <div class="actions-bar">
+    <button class="btn btn-primary" onclick="protectedAction(() => openModal('modal-doctor'))">+ Agregar Médico</button>
+    <button class="btn btn-secondary btn-sm" onclick="openShareModal()">📲 Compartir App / QR</button>
+    <button class="btn btn-secondary btn-sm" onclick="changePasskey()">🔑 Cambiar Clave</button>
+    <div>
+      <button class="btn btn-secondary btn-sm" onclick="exportData()">📥 Exportar JSON</button>
+      <button class="btn btn-secondary btn-sm" onclick="protectedAction(() => document.getElementById('import-file').click())">📤 Importar JSON</button>
+      <input type="file" id="import-file" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="Buscar médico, especialidad, clínica..." oninput="renderDoctors()">
+    <select id="filter-specialty" onchange="renderDoctors()">
+      <option value="">Todas las Especialidades</option>
+    </select>
+  </div>
+
+  <div class="cards-container" id="doctors-container"></div>
+
+  <!-- MODALES -->
+  <div class="modal" id="modal-doctor">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-doc-title">Nuevo Registro Médico</h3>
+        <button class="modal-close" onclick="closeModal('modal-doctor')">&times;</button>
+      </div>
+      <form id="form-doctor" onsubmit="saveDoctor(event)">
+        <input type="hidden" id="doc-id">
+        <div class="form-group">
+          <label>Nombre del Médico *</label>
+          <input type="text" id="doc-name" required placeholder="Ej: Dr. Alejandro Mendoza">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Especialidad *</label>
+            <select id="doc-specialty" required></select>
+          </div>
+          <div class="form-group">
+            <label>Foto Perfil (URL)</label>
+            <input type="url" id="doc-photo" placeholder="https://... (vacío para default)">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Clínica u Hospital</label>
+          <input type="text" id="doc-clinic" placeholder="Ej: Centro Médico San José">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>WhatsApp / Teléfono *</label>
+            <input type="tel" id="doc-phone" required placeholder="Ej: 584141234567">
+          </div>
+          <div class="form-group">
+            <label>Horario de Atención</label>
+            <input type="text" id="doc-schedule" placeholder="Ej: Lun-Vie 8am - 2pm">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Dirección</label>
+          <textarea id="doc-address" rows="2" placeholder="Ubicación consultorio..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>URLs de Banners Publicitarios (Separadas por comas)</label>
+          <input type="text" id="doc-banners" placeholder="https://img1.jpg, https://img2.jpg">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label><input type="checkbox" id="doc-insurance"> Acepta Seguros</label>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" id="doc-cashea"> Pago en Cuotas (Cashea)</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notas adicionales</label>
+          <input type="text" id="doc-notes" placeholder="Ej: Previa cita, piso 3 consultorio 3B">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Guardar Registro</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-reviews">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Opiniones de Pacientes</h3>
+        <button class="modal-close" onclick="closeModal('modal-reviews')">&times;</button>
+      </div>
+      <div id="reviews-doctor-name" style="font-weight:bold; margin-bottom:10px; color:var(--primary);"></div>
+      <div class="comments-list" id="comments-container"></div>
+      <hr style="margin:10px 0;">
+      <form id="form-review" onsubmit="saveReview(event)">
+        <input type="hidden" id="review-doc-id">
+        <div class="form-group">
+          <label>Puntuación</label>
+          <select id="review-rating">
+            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+            <option value="4">⭐⭐⭐⭐ (4/5)</option>
+            <option value="3">⭐⭐⭐ (3/5)</option>
+            <option value="2">⭐⭐ (2/5)</option>
+            <option value="1">⭐ (1/5)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tu Opinión</label>
+          <textarea id="review-text" rows="2" required placeholder="Escribe tu experiencia con el médico..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Enviar Opinión</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-history">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Histórico de Consultas</h3>
+        <button class="modal-close" onclick="closeModal('modal-history')">&times;</button>
+      </div>
+      <div id="history-doctor-name" style="font-weight:bold; margin-bottom:10px; color:var(--primary);"></div>
+      <div class="history-list" id="history-container"></div>
+      <hr style="margin:10px 0;">
+      <form id="form-history" onsubmit="saveHistoryEntry(event)">
+        <input type="hidden" id="history-doc-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha *</label>
+            <input type="date" id="history-date" required>
+          </div>
+          <div class="form-group">
+            <label>Paciente *</label>
+            <input type="text" id="history-patient" required placeholder="Nombre completo">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Motivo / Diagnóstico *</label>
+          <textarea id="history-notes" rows="2" required placeholder="Resumen médico o indicación..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Registrar Consulta</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modal-share">
+    <div class="modal-content" style="text-align:center;">
+      <div class="modal-header">
+        <h3>Código QR de Acceso</h3>
+        <button class="modal-close" onclick="closeModal('modal-share')">&times;</button>
+      </div>
+      <p style="font-size:13px; color:#666;">Escanea para abrir la app en cualquier teléfono:</p>
+      <div id="qrcode-container"></div>
+      <button class="btn btn-primary" onclick="copyAppURL()" style="width:100%; margin-top:10px;">📋 Copiar Enlace Directo</button>
+    </div>
+  </div>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW error:', err));
+      });
+    }
+
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwa-install-banner').style.display = 'flex';
+    });
+
+    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        document.getElementById('pwa-install-banner').style.display = 'none';
+      }
+    });
+
+    const SPECIALTIES = [
+      "Alergología", "Anestesiología", "Cardiología", "Cirugía General", "Cirugía Plástica",
+      "Dermatología", "Emergenciología", "Endocrinología", "Fisioterapia / Rehabilitación",
+      "Gastroenterología", "Ginecología y Obstetricia", "Hematología", "Infectología",
+      "Laboratorio Clínico", "Medicina General", "Medicina Interna", "Nefrología", 
+      "Neumonología", "Neurología", "Nutrición y Dietética", "Odontología", "Oftalmología",
+      "Oncología", "Otorrinolaringología", "Pediatría", "Psiquiatría / Psicología",
+      "Radiología / Imágenes", "Traumatología y Ortopedia", "Urología"
+    ];
+
+    const CASHEA_SVG = `
+      <svg class="cashea-svg-icon" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M250 50C180 50 110 120 110 250C110 380 180 450 250 450C320 450 380 390 380 320H280C280 340 265 350 250 350C195 350 190 290 190 250C190 210 195 150 250 150C265 150 280 160 280 180H380C380 110 320 50 250 50Z" fill="black"/>
+      </svg>
+    `;
+
+    const DEFAULT_AVATAR = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80";
+    const DEFAULT_BANNERS = [
+      "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=300&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=300&auto=format&fit=crop&q=80"
+    ];
+
+    let doctors = JSON.parse(localStorage.getItem('app_med_doctors')) || [];
+    let APP_PASSKEY = localStorage.getItem('app_med_passkey') || "123456789*";
+    let activeCarouselIndexes = {};
+
+    function init() {
+      populateSpecialties();
+      if (doctors.length === 0) seedInitialData();
+      renderDoctors();
+    }
+
+    function seedInitialData() {
+      doctors = [{
+        id: "1",
+        name: "Dr. Roberto Silva",
+        specialty: "Cardiología",
+        clinic: "Centro Médico Caracas",
+        phone: "584141234567",
+        schedule: "Lun-Vie 8am - 1pm",
+        address: "Av. Principal San Bernardino, Piso 2, Consultorio 2A",
+        photo: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80",
+        banners: DEFAULT_BANNERS,
+        insurance: true,
+        cashea: true,
+        notes: "Atención previa cita",
+        reviews: [{ rating: 5, text: "Excelente atención médica profesional." }],
+        history: []
+      }];
+      saveData();
+    }
+
+    function protectedAction(callback) {
+      const entered = prompt("Ingrese la clave de autorización de equipo:");
+      if (entered === APP_PASSKEY) {
+        callback();
+      } else if (entered !== null) {
+        alert("Clave incorrecta. Acceso denegado.");
+      }
+    }
+
+    function changePasskey() {
+      const current = prompt("Ingrese la clave actual:");
+      if (current === APP_PASSKEY) {
+        const newKey = prompt("Ingrese la nueva clave de 10 caracteres (Ej: 123456789*):");
+        if (newKey && newKey.length >= 6) {
+          APP_PASSKEY = newKey;
+          localStorage.setItem('app_med_passkey', APP_PASSKEY);
+          alert("¡Clave actualizada exitosamente!");
+        } else {
+          alert("La clave no es válida o es muy corta.");
+        }
+      } else if (current !== null) {
+        alert("Clave actual incorrecta.");
+      }
+    }
+
+    function populateSpecialties() {
+      const filterSelect = document.getElementById('filter-specialty');
+      const formSelect = document.getElementById('doc-specialty');
+      SPECIALTIES.forEach(sp => {
+        filterSelect.innerHTML += `<option value="${sp}">${sp}</option>`;
+        formSelect.innerHTML += `<option value="${sp}">${sp}</option>`;
+      });
+    }
+
+    function renderDoctors() {
+      const container = document.getElementById('doctors-container');
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const filterSp = document.getElementById('filter-specialty').value;
+
+      const filtered = doctors.filter(doc => {
+        const matchSearch = doc.name.toLowerCase().includes(search) || 
+                            (doc.clinic && doc.clinic.toLowerCase().includes(search)) ||
+                            doc.specialty.toLowerCase().includes(search);
+        const matchSp = filterSp === "" || doc.specialty === filterSp;
+        return matchSearch && matchSp;
+      });
+
+      container.innerHTML = "";
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p style="text-align:center; grid-column: 1/-1; color:#888; padding:30px;">No se encontraron registros de contactos.</p>`;
+        return;
+      }
+
+      filtered.forEach(doc => {
+        const avgRating = getAverageRating(doc.reviews);
+        const starsText = doc.reviews && doc.reviews.length ? `⭐ ${avgRating} (${doc.reviews.length})` : 'Sin valoraciones';
+        const photoUrl = doc.photo && doc.photo.trim() !== "" ? doc.photo : DEFAULT_AVATAR;
+        const banners = (doc.banners && doc.banners.length > 0) ? doc.banners : DEFAULT_BANNERS;
+
+        if (!(doc.id in activeCarouselIndexes)) activeCarouselIndexes[doc.id] = 0;
+        const currentBannerIdx = activeCarouselIndexes[doc.id] % banners.length;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div>
+            <div class="card-top-section">
+              <img src="${photoUrl}" class="doc-avatar" alt="Foto ${doc.name}">
+              <div class="card-header-info">
+                <div class="card-title">${doc.name}</div>
+                <div class="card-subtitle">${doc.specialty}</div>
+                <div class="rating-stars">${starsText}</div>
+              </div>
+              
+              <div class="promo-carousel">
+                <img src="${banners[currentBannerIdx]}" id="banner-${doc.id}" alt="Banner Publicitario">
+                ${banners.length > 1 ? `
+                  <button class="carousel-btn prev" onclick="prevBanner('${doc.id}')">&lt;</button>
+                  <button class="carousel-btn next" onclick="nextBanner('${doc.id}')">&gt;</button>
+                ` : ''}
+              </div>
+            </div>
+
+            <div class="badge-container">
+              ${doc.insurance ? `<span class="badge badge-insurance">Acepta Seguro</span>` : ''}
+              ${doc.cashea ? `
+                <span class="badge badge-cashea">
+                  ${CASHEA_SVG} Cashea
+                </span>` : ''}
+            </div>
+
+            <div class="card-info">
+              <strong>🏥 Centro:</strong> ${doc.clinic || 'No especificada'}<br>
+              <strong>🕒 Horario:</strong> ${doc.schedule || 'Consultar'}<br>
+              <strong>📍 Ubicación:</strong> ${doc.address || 'No registrada'}<br>
+              ${doc.notes ? `<strong>📝 Nota:</strong> ${doc.notes}` : ''}
+            </div>
+          </div>
+
+          <div>
+            <div class="card-buttons">
+              <a href="https://wa.me/${doc.phone.replace(/[^0-9]/g, '')}?text=Hola%20${encodeURIComponent(doc.name)},%20quisiera%20solicitar%20información%20sobre%20su%20consulta." target="_blank" class="btn btn-success btn-sm">WhatsApp</a>
+              <a href="tel:${doc.phone}" class="btn btn-call btn-sm">Llamar</a>
+              <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(doc.address || doc.clinic)}" target="_blank" class="btn btn-maps btn-sm">Mapa</a>
+            </div>
+            
+            <div style="display:flex; gap:4px; margin-top:6px;">
+              <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openReviewsModal('${doc.id}')">Opiniones</button>
+              <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openHistoryModal('${doc.id}')">Consultas</button>
+              <button class="btn btn-secondary btn-sm" onclick="protectedAction(() => editDoctor('${doc.id}'))">✏️</button>
+              <button class="btn btn-secondary btn-sm" style="background:#dc3545" onclick="protectedAction(() => deleteDoctor('${doc.id}'))">🗑️</button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function prevBanner(docId) {
+      const doc = doctors.find(d => d.id === docId);
+      const banners = (doc && doc.banners && doc.banners.length) ? doc.banners : DEFAULT_BANNERS;
+      activeCarouselIndexes[docId] = (activeCarouselIndexes[docId] - 1 + banners.length) % banners.length;
+      document.getElementById(`banner-${docId}`).src = banners[activeCarouselIndexes[docId]];
+    }
+
+    function nextBanner(docId) {
+      const doc = doctors.find(d => d.id === docId);
+      const banners = (doc && doc.banners && doc.banners.length) ? doc.banners : DEFAULT_BANNERS;
+      activeCarouselIndexes[docId] = (activeCarouselIndexes[docId] + 1) % banners.length;
+      document.getElementById(`banner-${docId}`).src = banners[activeCarouselIndexes[docId]];
+    }
+
+    function saveDoctor(e) {
+      e.preventDefault();
+      const id = document.getElementById('doc-id').value;
+      const rawBanners = document.getElementById('doc-banners').value;
+      const bannersArr = rawBanners.split(',').map(b => b.trim()).filter(b => b.length > 0);
+
+      const newDoc = {
+        id: id || Date.now().toString(),
+        name: document.getElementById('doc-name').value,
+        specialty: document.getElementById('doc-specialty').value,
+        photo: document.getElementById('doc-photo').value,
+        clinic: document.getElementById('doc-clinic').value,
+        phone: document.getElementById('doc-phone').value,
+        schedule: document.getElementById('doc-schedule').value,
+        address: document.getElementById('doc-address').value,
+        banners: bannersArr,
+        insurance: document.getElementById('doc-insurance').checked,
+        cashea: document.getElementById('doc-cashea').checked,
+        notes: document.getElementById('doc-notes').value,
+        reviews: id ? (doctors.find(d => d.id === id)?.reviews || []) : [],
+        history: id ? (doctors.find(d => d.id === id)?.history || []) : []
+      };
+
+      if (id) {
+        doctors = doctors.map(d => d.id === id ? newDoc : d);
+      } else {
+        doctors.push(newDoc);
+      }
+
+      saveData();
+      closeModal('modal-doctor');
+      document.getElementById('form-doctor').reset();
+      renderDoctors();
+    }
+
+    function editDoctor(id) {
+      const doc = doctors.find(d => d.id === id);
+      if (!doc) return;
+
+      document.getElementById('doc-id').value = doc.id;
+      document.getElementById('doc-name').value = doc.name;
+      document.getElementById('doc-specialty').value = doc.specialty;
+      document.getElementById('doc-photo').value = doc.photo || '';
+      document.getElementById('doc-clinic').value = doc.clinic || '';
+      document.getElementById('doc-phone').value = doc.phone;
+      document.getElementById('doc-schedule').value = doc.schedule || '';
+      document.getElementById('doc-address').value = doc.address || '';
+      document.getElementById('doc-banners').value = (doc.banners || []).join(', ');
+      document.getElementById('doc-insurance').checked = doc.insurance;
+      document.getElementById('doc-cashea').checked = doc.cashea;
+      document.getElementById('doc-notes').value = doc.notes || '';
+
+      document.getElementById('modal-doc-title').innerText = "Editar Registro Médico";
+      openModal('modal-doctor');
+    }
+
+    function deleteDoctor(id) {
+      if (confirm('¿Desea eliminar definitivamente este registro médico?')) {
+        doctors = doctors.filter(d => d.id !== id);
+        saveData();
+        renderDoctors();
+      }
+    }
+
+    function openReviewsModal(docId) {
+      const doc = doctors.find(d => d.id === docId);
+      if (!doc) return;
+      document.getElementById('review-doc-id').value = docId;
+      document.getElementById('reviews-doctor-name').innerText = doc.name;
+      
+      const container = document.getElementById('comments-container');
+      container.innerHTML = doc.reviews && doc.reviews.length ? '' : '<p>Sin opiniones registradas.</p>';
+
+      (doc.reviews || []).forEach(r => {
+        container.innerHTML += `
+          <div class="comment-item">
+            <div>${'⭐'.repeat(r.rating)}</div>
+            <div>${r.text}</div>
+          </div>
+        `;
+      });
+      openModal('modal-reviews');
+    }
+
+    function saveReview(e) {
+      e.preventDefault();
+      const docId = document.getElementById('review-doc-id').value;
+      const rating = parseInt(document.getElementById('review-rating').value);
+      const text = document.getElementById('review-text').value;
+
+      doctors = doctors.map(d => {
+        if (d.id === docId) {
+          if (!d.reviews) d.reviews = [];
+          d.reviews.push({ rating, text, date: new Date().toISOString() });
+        }
+        return d;
+      });
+
+      saveData();
+      closeModal('modal-reviews');
+      document.getElementById('form-review').reset();
+      renderDoctors();
+    }
+
+    function getAverageRating(reviews) {
+      if (!reviews || reviews.length === 0) return 0;
+      const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+      return (sum / reviews.length).toFixed(1);
+    }
+
+    function openHistoryModal(docId) {
+      const doc = doctors.find(d => d.id === docId);
+      if (!doc) return;
+      document.getElementById('history-doc-id').value = docId;
+      document.getElementById('history-doctor-name').innerText = doc.name;
+      
+      const container = document.getElementById('history-container');
+      container.innerHTML = doc.history && doc.history.length ? '' : '<p>Sin consultas registradas.</p>';
+
+      (doc.history || []).forEach(h => {
+        container.innerHTML += `
+          <div class="history-item">
+            <strong>📅 ${h.date} - Paciente: ${h.patient}</strong>
+            <div>${h.notes}</div>
+          </div>
+        `;
+      });
+      openModal('modal-history');
+    }
+
+    function saveHistoryEntry(e) {
+      e.preventDefault();
+      const docId = document.getElementById('history-doc-id').value;
+      const date = document.getElementById('history-date').value;
+      const patient = document.getElementById('history-patient').value;
+      const notes = document.getElementById('history-notes').value;
+
+      doctors = doctors.map(d => {
+        if (d.id === docId) {
+          if (!d.history) d.history = [];
+          d.history.push({ date, patient, notes });
+        }
+        return d;
+      });
+
+      saveData();
+      closeModal('modal-history');
+      document.getElementById('form-history').reset();
+    }
+
+    function openShareModal() {
+      const qrContainer = document.getElementById('qrcode-container');
+      qrContainer.innerHTML = "";
+      new QRCode(qrContainer, {
+        text: window.location.href,
+        width: 180,
+        height: 180
+      });
+      openModal('modal-share');
+    }
+
+    function copyAppURL() {
+      navigator.clipboard.writeText(window.location.href);
+      alert("¡Enlace copiado al portapapeles!");
+    }
+
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { 
+      document.getElementById(id).classList.remove('active');
+      if(id === 'modal-doctor') {
+        document.getElementById('doc-id').value = '';
+        document.getElementById('modal-doc-title').innerText = "Nuevo Registro Médico";
+        document.getElementById('form-doctor').reset();
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem('app_med_doctors', JSON.stringify(doctors));
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(doctors, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `guia_medica_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importData(event) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            doctors = imported;
+            saveData();
+            renderDoctors();
+            alert('¡Datos cargados exitosamente!');
+          } else {
+            alert('El archivo no tiene el formato adecuado.');
+          }
+        } catch (err) {
+          alert('Error al leer el archivo JSON.');
+        }
+      };
+      reader.readAsText(event.target.files[0]);
+    }
+
+    init();
+  </script>
+</body>
+</html>
